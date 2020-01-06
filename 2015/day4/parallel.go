@@ -39,7 +39,7 @@ func main() {
 
 				cipher := hasher.Sum(cipher)
 
-				if cipher[0] == 0 && cipher[1] == 0 && cipher[2] == 0 && cipher[3] == 0 && (cipher[4]&0xF0) == 0 {
+				if cipher[0] == 0 && cipher[1] == 0 && cipher[2] == 0 && cipher[3] == 0 {
 					encoding := hex.EncodeToString(cipher)
 					fmt.Printf("%d\n%s\n%s\n", i, strBuf, encoding)
 					fmt.Printf("took %s\n", time.Since(startTime))
