@@ -55,6 +55,92 @@ func main() {
 	}
 
 	fmt.Printf("part 2 wire a: %d\n", newWires["a"])
+
+	recursiveAVal := determineFinalSignalOnWire(ops, nil, "a")
+	fmt.Printf("recursive value of a: %d\n", recursiveAVal)
+
+	newWires = make(map[string]uint16, 1024)
+	newWires["b"] = wires["a"]
+	recursiveAVal = determineFinalSignalOnWire(ops, newWires, "a")
+	fmt.Printf("recursive value of a: %d\n", recursiveAVal)
+}
+
+func determineFinalSignalOnWire(ops []op, initialState map[string]uint16, wire string) uint16 {
+	howToGetWireSignals := make(map[string]op, len(ops))
+
+	var wireSignals map[string]uint16
+	if initialState == nil {
+		wireSignals = make(map[string]uint16, len(ops))
+	} else {
+		wireSignals = initialState
+	}
+
+	for _, op := range ops {
+		howToGetWireSignals[op.dstWire] = op
+	}
+
+	var recursiveEvaluator func(target string) uint16
+
+	recursiveEvaluator = func(target string) uint16 {
+		if currentSignal, ok := wireSignals[target]; ok {
+			return currentSignal
+		}
+
+		op := howToGetWireSignals[target]
+
+		var result uint16
+
+		switch op.typ {
+		case opTypeValue:
+			wireSignals[target] = op.immediate
+			return op.immediate
+
+		case opTypeWire:
+			result = recursiveEvaluator(op.srcWire1)
+			wireSignals[target] = result
+
+		case opTypeAndWires:
+			srcWire1Val := recursiveEvaluator(op.srcWire1)
+			srcWire2Val := recursiveEvaluator(op.srcWire2)
+			result = srcWire1Val & srcWire2Val
+			wireSignals[target] = result
+
+		case opTypeAndWireImmediate:
+			srcWireVal := recursiveEvaluator(op.srcWire1)
+			result = srcWireVal & op.immediate
+			wireSignals[target] = result
+
+		case opTypeOrWires:
+			srcWire1Val := recursiveEvaluator(op.srcWire1)
+			srcWire2Val := recursiveEvaluator(op.srcWire2)
+			result = srcWire1Val | srcWire2Val
+			wireSignals[target] = result
+
+		case opTypeOrWireImmediate:
+			srcWireVal := recursiveEvaluator(op.srcWire1)
+			result = srcWireVal | op.immediate
+			wireSignals[target] = result
+
+		case opTypeRShift:
+			srcWireVal := recursiveEvaluator(op.srcWire1)
+			result = srcWireVal >> op.immediate
+			wireSignals[target] = result
+
+		case opTypeLShift:
+			srcWireVal := recursiveEvaluator(op.srcWire1)
+			result = srcWireVal << op.immediate
+			wireSignals[target] = result
+
+		case opTypeNot:
+			srcWireVal := recursiveEvaluator(op.srcWire1)
+			result = ^srcWireVal
+			wireSignals[target] = result
+		}
+
+		return result
+	}
+
+	return recursiveEvaluator(wire)
 }
 
 func handleEvaluationErr(err error) {
