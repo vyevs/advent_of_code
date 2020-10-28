@@ -48,7 +48,6 @@ type direction struct {
 }
 
 func visibility(grid [][]int, x, y int) int {
-	var seen int
 	seenAlready := make(map[direction]struct{}, len(grid)*len(grid[0]))
 	for otherX, row := range grid {
 		for otherY, p := range row {
@@ -59,16 +58,13 @@ func visibility(grid [][]int, x, y int) int {
 			dir := gcdDirection(x, y, otherX, otherY)
 
 			if p == 1 {
-				if _, haveSeen := seenAlready[dir]; !haveSeen {
-					seen++
-					seenAlready[dir] = struct{}{}
-				}
+				seenAlready[dir] = struct{}{}
 			}
 
 		}
 	}
 
-	return seen
+	return len(seenAlready)
 }
 
 func gcdDirection(x, y, otherX, otherY int) direction {
@@ -76,6 +72,7 @@ func gcdDirection(x, y, otherX, otherY int) direction {
 	dy := otherY - y
 
 	if dx == 0 {
+		// if dx is 0, we want to reduce to direction [0,1] or [0,-1]
 		if dy < 0 {
 			dy /= -dy
 		} else {
@@ -86,6 +83,7 @@ func gcdDirection(x, y, otherX, otherY int) direction {
 			dy: dy,
 		}
 	} else if dy == 0 {
+		// if dy is 0, we want to reduce to direction [1,0] or [-1,0]
 		if dx < 0 {
 			dx /= -dx
 		} else {
@@ -99,6 +97,7 @@ func gcdDirection(x, y, otherX, otherY int) direction {
 
 	g := gcd(intAbs(dx), intAbs(dy))
 
+	// reduce the dx & dy to the lowest possible representation that maintains the same slope
 	dx = dx / g
 	dy = dy / g
 
