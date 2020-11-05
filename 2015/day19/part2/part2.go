@@ -2,71 +2,76 @@ package main
 
 import (
 	"bufio"
-	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		log.Fatalf("provide 1 input file")
+	moleculeMappings, target := readInput()
+
+	log.Printf("target: %q", target)
+	for to, from := range moleculeMappings {
+		log.Printf("%s -> %s", to, from)
 	}
 
-	f, err := os.Open(os.Args[1])
-	if err != nil {
-		log.Fatalf("open: %v", err)
-	}
-
-	molecule, replacements := parseInput(f)
-
-	var fn func()
-
-	curPerm := "e"
-	var steps int
-
-	out, _ := os.OpenFile("output.txt", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
-
-	fn = func() {
-		fmt.Fprintln(out, curPerm)
-		if len(curPerm) == len(molecule) && curPerm == molecule {
-			fmt.Println(steps)
-			os.Exit(0)
+	/*
+		allMolecules := make([]string, 0, len(moleculeMappings)*2)
+		for from, allTos := range moleculeMappings {
+			allMolecules = append(allMolecules, from)
+			allMolecules = append(allMolecules, allTos...)
 		}
 
-		for _, r := range replacements {
-			indices := kmpIndexAll(curPerm, r.str)
-			for _, repl := range r.replacements {
-				for _, ind := range indices {
-					oldCurPerm := curPerm
-					curPerm = curPerm[:ind] + repl + curPerm[ind+len(r.str):]
-					if len(curPerm) <= len(molecule) {
-						steps++
-						fn()
-						steps--
-					}
-					curPerm = oldCurPerm
-				}
+		log.Printf("all molecules: %v", allMolecules)
+
+		allPossibleDivisions := makeAllPossibleDivisions(target, allMolecules)
+		log.Printf("there are %d possible divisions", len(allPossibleDivisions))
+	*/
+}
+
+func makeAllPossibleDivisions(str string, possibleMolecules []string) [][]string {
+	moleculesSet := make(map[string]struct{}, len(possibleMolecules))
+	for _, m := range possibleMolecules {
+		moleculesSet[m] = struct{}{}
+	}
+
+	var recurse func(str string)
+
+	divisions := make([][]string, 0, 1024)
+	curDivision := make([]string, 0, len(str))
+	recurse = func(str string) {
+		log.Printf("recurse(%q)", str)
+		if len(str) == 0 {
+			return
+		}
+		if _, isSingleMolecule := moleculesSet[str]; isSingleMolecule {
+			cpy := make([]string, len(curDivision))
+			copy(cpy, curDivision)
+			cpy = append(cpy, str)
+			divisions = append(divisions, cpy)
+		}
+
+		partStart := 0
+		partEnd := 1
+		for ; partEnd <= len(str); partEnd++ {
+			part := str[partStart:partEnd]
+			if _, isMolecule := moleculesSet[part]; isMolecule {
+				curDivision = append(curDivision, part)
+				recurse(str[partEnd:])
+				curDivision = curDivision[:len(curDivision)-1]
 			}
 		}
 	}
 
-	fn()
+	recurse(str)
+
+	return divisions
 }
 
-type replacement struct {
-	str          string
-	replacements []string
-}
+func readInput() (map[string][]string, string) {
+	scanner := bufio.NewScanner(os.Stdin)
 
-func parseInput(r io.Reader) (string, []replacement) {
-	scanner := bufio.NewScanner(r)
-
-	replacements := make([]replacement, 0, 128)
-	replacementsIndex := -1
-
-	var curStr string
+	moleculeMappings := make(map[string][]string, 128)
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -77,74 +82,14 @@ func parseInput(r io.Reader) (string, []replacement) {
 
 		tokens := strings.Split(line, " ")
 
-		if tokens[0] != curStr {
-			curStr = tokens[0]
-			replacementsIndex++
-			replacements = append(replacements, replacement{str: curStr, replacements: make([]string, 0, 128)})
-		}
+		from := tokens[0]
+		to := tokens[2]
 
-		replacements[replacementsIndex].replacements = append(replacements[replacementsIndex].replacements, tokens[2])
+		moleculeMappings[from] = append(moleculeMappings[from], to)
 	}
 
 	scanner.Scan()
-	molecule := scanner.Text()
+	target := scanner.Text()
 
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("Scanner: %v", err)
-	}
-
-	return molecule, replacements
-}
-
-func kmpTable(s string) []int {
-	pos := 1
-	cnd := 0
-
-	table := make([]int, len(s)+1)
-	table[0] = -1
-
-	for pos < len(s) {
-		if s[pos] == s[cnd] {
-			table[pos] = table[cnd]
-		} else {
-			table[pos] = cnd
-			cnd = table[cnd]
-			for cnd >= 0 && s[pos] != s[cnd] {
-				cnd = table[cnd]
-			}
-		}
-		pos++
-		cnd++
-	}
-
-	table[pos] = cnd
-
-	return table
-}
-
-func kmpIndexAll(s, w string) []int {
-	table := kmpTable(w)
-
-	var j, k int
-
-	positions := make([]int, 0, 8)
-
-	for j < len(s) {
-		if w[k] == s[j] {
-			j++
-			k++
-			if k == len(w) {
-				positions = append(positions, j-k)
-				k = table[k]
-			}
-		} else {
-			k = table[k]
-			if k < 0 {
-				j++
-				k++
-			}
-		}
-	}
-
-	return positions
+	return moleculeMappings, target
 }

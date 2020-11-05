@@ -3,192 +3,225 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 )
 
-func main() {
-	f, _ := os.Open(os.Args[1])
-
-	instructions := parseInput(f)
-	f.Close()
-
-	for _, instruction := range instructions {
-		fmt.Printf("%+v\n", instruction)
-	}
-}
-
-func processInstructions(instructions []instruction) map[int]int {
-	processed := make([]bool, len(instructions))
-
-	type bot struct {
-		lowChip  int
-		highChip int
-	}
-
-	bots := make(map[int]bot, len(instructions)*2)
-	outputs := make(map[int]int, len(instructions)*2)
-
-	for {
-		var processedAtLeastOne bool
-
-		for i, instruction := range instructions {
-			if !processed[i] {
-
-				if instruction.typ == toBot {
-					chipVal := instruction.lowTarget
-					bot, ok := bots[instruction.highTarget]
-					if ok {
-						if chipVal > bot.lowChip {
-							bot.highChip = chipVal
-						} else {
-							bot.lowChip, bot.highChip = chipVal, bot.lowChip
-						}
-					} else {
-						bot.lowChip = chipVal
-					}
-
-					bots[instruction.highTarget] = bot
-				} else { // instruction.typ == fromBot
-
-					if instruction.lowTargetTyp == targetBot {
-
-					}
-				}
-
-				processed[i] = true
-				processedAtLeastOne = true
-			}
-		}
-
-		if !processedAtLeastOne {
-			break
-		}
-	}
-
-	return outputs
-}
-
 type instructionType int
 
 const (
-	toBot instructionType = iota
-	fromBot
+	instructionTypeValueToBot instructionType = iota
+	instructionTypeBotDecides
 )
 
 type targetType int
 
 const (
-	targetBot targetType = iota
-	targetOutput
+	targetTypeBot targetType = iota
+	targetTypeOutput
 )
 
 type instruction struct {
 	typ instructionType
 
-	fromBot int
+	// for instructionTypeValueToBot
+	value     int
+	targetBot int
 
-	lowTargetTyp  targetType
-	highTargetTyp targetType
-
-	lowTarget  int // if typ == toBot this is the chip value
-	highTarget int // if typ == toBot this is the target bot
+	// for instructionTypeBotDecides
+	sourceBot                   int
+	lowTargetTyp, highTargetTyp targetType
+	lowTarget, highTarget       int
 }
 
-func parseInput(r io.Reader) []instruction {
-	instructions := make([]instruction, 0, 512)
+func main() {
+	instrs := readInInstructions()
 
-	scanner := bufio.NewScanner(r)
+	executeInstructions(instrs)
+}
 
-	for lineNum := 1; scanner.Scan(); lineNum++ {
+func readInInstructions() []instruction {
+	scanner := bufio.NewScanner(os.Stdin)
+
+	instrs := make([]instruction, 0, 512)
+	for scanner.Scan() {
 		line := scanner.Text()
 
-		tokens := strings.Split(line, " ")
+		words := strings.Split(line, " ")
 
-		var instruction instruction
-		var err error
-
-		if tokens[0] == "value" {
-			instruction.typ = toBot
-
-			{
-				chipValStr := tokens[1]
-
-				instruction.lowTarget, err = strconv.Atoi(chipValStr)
-				if err != nil {
-					log.Fatalf("invalid chip value %q on line %d", chipValStr, lineNum)
-				}
-			}
-
-			{
-				targetStr := tokens[5]
-
-				instruction.highTarget, err = strconv.Atoi(targetStr)
-				if err != nil {
-					log.Fatalf("invalid bot number %q on line %d", targetStr, lineNum)
-				}
-			}
-
-		} else { // tokens[0] == "bot"
-			instruction.typ = fromBot
-
-			{
-				fromBotStr := tokens[1]
-
-				instruction.fromBot, err = strconv.Atoi(fromBotStr)
-				if err != nil {
-					log.Fatalf("invalid bot number %q on line %d", fromBotStr, lineNum)
-				}
-			}
-
-			{
-				lowTargetTypStr := tokens[5]
-
-				if lowTargetTypStr == "bot" {
-					instruction.lowTargetTyp = targetBot
-				} else {
-					instruction.lowTargetTyp = targetOutput
-				}
-			}
-
-			{
-				lowTargetStr := tokens[6]
-
-				instruction.lowTarget, err = strconv.Atoi(lowTargetStr)
-				if err != nil {
-					log.Fatalf("invalid low target number %q on line %d", lowTargetStr, lineNum)
-				}
-			}
-
-			{
-				highTargetTypStr := tokens[10]
-
-				if highTargetTypStr == "bot" {
-					instruction.highTargetTyp = targetBot
-				} else {
-					instruction.highTargetTyp = targetOutput
-				}
-			}
-
-			{
-				highTargetStr := tokens[6]
-
-				instruction.highTarget, err = strconv.Atoi(highTargetStr)
-				if err != nil {
-					log.Fatalf("invalid low target number %q on line %d", highTargetStr, lineNum)
-				}
-			}
+		var instr instruction
+		if words[0] == "value" {
+			instr = parseInstructionTypeValueToBot(words)
+		} else {
+			instr = parseInstructionTypeBotDecides(words)
 		}
 
-		instructions = append(instructions, instruction)
+		instrs = append(instrs, instr)
 	}
 
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("scanner: %v", err)
+	return instrs
+}
+
+// value 5 goes to bot 2
+// 0     1 2    3  4   5
+func parseInstructionTypeValueToBot(instrWords []string) instruction {
+	var instr instruction
+	instr.typ = instructionTypeValueToBot
+	instr.value, _ = strconv.Atoi(instrWords[1])
+	instr.targetBot, _ = strconv.Atoi(instrWords[5])
+	return instr
+}
+
+// bot 2 gives low to bot 1 and high to bot 0
+// 0   1 2     3   4  5   6 7   8    9  10  11
+func parseInstructionTypeBotDecides(instrWords []string) instruction {
+	var instr instruction
+	instr.typ = instructionTypeBotDecides
+
+	instr.sourceBot, _ = strconv.Atoi(instrWords[1])
+
+	if instrWords[5] == "bot" {
+		instr.lowTargetTyp = targetTypeBot
+	} else {
+		instr.lowTargetTyp = targetTypeOutput
 	}
 
-	return instructions
+	if instrWords[10] == "bot" {
+		instr.highTargetTyp = targetTypeBot
+	} else {
+		instr.highTargetTyp = targetTypeOutput
+	}
+
+	instr.lowTarget, _ = strconv.Atoi(instrWords[6])
+	instr.highTarget, _ = strconv.Atoi(instrWords[11])
+
+	return instr
+}
+
+type bot struct {
+	v1, v2 int
+}
+
+func executeInstructions(instrs []instruction) {
+
+	outputs := make(map[int]int, 512) // maps the output to the value it was given, if any
+	bots := make(map[int]bot, 512)    // maps a bot's number to the bot itself
+
+	alreadyExecuted := make([]bool, len(instrs))
+
+	executedInstruction := true
+	for executedInstruction {
+		executedInstruction = false
+
+		for i, instr := range instrs {
+			if alreadyExecuted[i] {
+				continue
+			}
+			executed := executeInstruction(instr, bots, outputs)
+			if executed {
+				executedInstruction = true
+				alreadyExecuted[i] = true
+			}
+		}
+	}
+
+	log.Printf("bot state: %v", bots)
+	log.Printf("final output state: %v", outputs)
+}
+
+// returns whether the instruction was successfully executed
+func executeInstruction(instr instruction, bots map[int]bot, outputs map[int]int) bool {
+	if instr.typ == instructionTypeValueToBot {
+		giveValueToBot(instr.value, instr.targetBot, bots)
+		return true
+
+	} else if instr.typ == instructionTypeBotDecides {
+		return executeInstructionTypeBotDecides(instr, bots, outputs)
+
+	} else {
+		panic(fmt.Sprintf("unknown instruction type %d", instr.typ))
+	}
+}
+
+func giveValueToBot(v, targetBot int, bots map[int]bot) {
+	bot, haveBot := bots[targetBot]
+
+	if haveBot {
+		if bot.v1 == -1 {
+			bot.v1 = v
+		} else if bot.v2 == -1 {
+			bot.v2 = v
+		} else {
+			panic(fmt.Sprintf("attempted to give a value to a bot that has 2 values, value: %d, target bot: %v", v, targetBot))
+		}
+	} else {
+		bot.v1 = v
+		bot.v2 = -1
+	}
+
+	bots[targetBot] = bot
+}
+
+func executeInstructionTypeBotDecides(instr instruction, bots map[int]bot, outputs map[int]int) bool {
+	bot, haveBot := bots[instr.sourceBot]
+	// we can't execute the instruction if the bot doesn't have any values
+	if !haveBot {
+		return false
+	}
+
+	// we can't execute the instruction if the bot only has 1 value
+	if bot.v1 == -1 || bot.v2 == -1 {
+		return false
+	}
+
+	lowPtr := ptrToIntMin(&bot.v1, &bot.v2)
+	highPtr := ptrToIntMax(&bot.v1, &bot.v2)
+
+	low := *lowPtr
+	high := *highPtr
+
+	if low == 17 && high == 61 {
+		log.Printf("bot %d compared microchips 17 and 61", instr.sourceBot)
+	}
+
+	*lowPtr = -1
+	*highPtr = -1
+
+	if instr.lowTargetTyp == targetTypeBot {
+		giveValueToBot(low, instr.lowTarget, bots)
+	} else {
+		_, alreadyHaveOutput := outputs[instr.lowTarget]
+		if alreadyHaveOutput {
+			panic(fmt.Sprintf("output %d already has a value", instr.lowTarget))
+		}
+		outputs[instr.lowTarget] = low
+	}
+
+	if instr.highTargetTyp == targetTypeBot {
+		giveValueToBot(high, instr.highTarget, bots)
+	} else {
+		_, alreadyHaveOutput := outputs[instr.highTarget]
+		if alreadyHaveOutput {
+			panic(fmt.Sprintf("output %d already has a value", instr.highTarget))
+		}
+		outputs[instr.highTarget] = high
+	}
+
+	return true
+}
+
+func ptrToIntMin(a, b *int) *int {
+	if *a < *b {
+		return a
+	}
+	return b
+}
+
+func ptrToIntMax(a, b *int) *int {
+	if *a > *b {
+		return a
+	}
+	return b
 }
