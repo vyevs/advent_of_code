@@ -1,0 +1,82 @@
+pc=0 rb=0
+1102
+MUL  34463338,34463338,63
+read [63] = 0
+write [0] = 1187721666102244
+pc=4 rb=0
+1007
+LT   [63],34463338,63
+read [63] = 0
+read [63] = 0
+write [0] = 1
+pc=8 rb=0
+1005
+JIT  [63],53
+read [63] = 0
+pc=11 rb=0
+1102
+MUL  3,1,1000
+read [1000] = 0
+write [0] = 3
+pc=15 rb=0
+109
+ARB  988
+pc=17 rb=988
+209
+ARB  [rb+12]
+read [1000] = 0
+pc=19 rb=988
+9
+ARB  [1000]
+read [1000] = 0
+pc=21 rb=988
+209
+ARB  [rb+6]
+read [994] = 0
+pc=23 rb=988
+209
+ARB  [rb+3]
+read [991] = 0
+pc=25 rb=988
+203
+IN   [rb+0]
+got input 1
+write [988] = 1
+pc=27 rb=988
+1008
+EQ   [1000],1,63
+read [1000] = 0
+read [63] = 0
+write [0] = 0
+pc=31 rb=988
+1005
+JIT  [63],65
+read [63] = 0
+pc=34 rb=988
+1008
+EQ   [1000],2,63
+read [1000] = 0
+read [63] = 0
+write [0] = 0
+pc=38 rb=988
+1005
+JIT  [63],904
+read [63] = 0
+pc=41 rb=988
+1008
+EQ   [1000],0,63
+read [1000] = 0
+read [63] = 0
+write [0] = 1
+pc=45 rb=988
+1005
+JIT  [63],58
+read [63] = 0
+pc=48 rb=988
+4
+OUT  [25]
+read [25] = 203
+output: 203
+pc=50 rb=988
+104
+that took 1.0007ms
