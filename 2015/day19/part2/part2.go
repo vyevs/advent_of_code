@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"log"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -10,62 +10,35 @@ import (
 func main() {
 	moleculeMappings, target := readInput()
 
-	log.Printf("target: %q", target)
-	for to, from := range moleculeMappings {
-		log.Printf("%s -> %s", to, from)
-	}
+	var recurse func(current string, nSteps uint64)
 
-	/*
-		allMolecules := make([]string, 0, len(moleculeMappings)*2)
-		for from, allTos := range moleculeMappings {
-			allMolecules = append(allMolecules, from)
-			allMolecules = append(allMolecules, allTos...)
-		}
+	var bestSteps uint64 = ^uint64(0)
 
-		log.Printf("all molecules: %v", allMolecules)
+	recurse = func(current string, nSteps uint64) {
 
-		allPossibleDivisions := makeAllPossibleDivisions(target, allMolecules)
-		log.Printf("there are %d possible divisions", len(allPossibleDivisions))
-	*/
-}
+		if current == "e" {
+			if nSteps < bestSteps {
+				bestSteps = nSteps
+				fmt.Printf("found a way to get to the target in %d steps\n", nSteps)
+			}
 
-func makeAllPossibleDivisions(str string, possibleMolecules []string) [][]string {
-	moleculesSet := make(map[string]struct{}, len(possibleMolecules))
-	for _, m := range possibleMolecules {
-		moleculesSet[m] = struct{}{}
-	}
+		} else {
+			for from, tos := range moleculeMappings {
+				for _, to := range tos {
+					if strings.Contains(current, to) {
+						newCurrent := strings.Replace(current, to, from, 1)
 
-	var recurse func(str string)
-
-	divisions := make([][]string, 0, 1024)
-	curDivision := make([]string, 0, len(str))
-	recurse = func(str string) {
-		log.Printf("recurse(%q)", str)
-		if len(str) == 0 {
-			return
-		}
-		if _, isSingleMolecule := moleculesSet[str]; isSingleMolecule {
-			cpy := make([]string, len(curDivision))
-			copy(cpy, curDivision)
-			cpy = append(cpy, str)
-			divisions = append(divisions, cpy)
-		}
-
-		partStart := 0
-		partEnd := 1
-		for ; partEnd <= len(str); partEnd++ {
-			part := str[partStart:partEnd]
-			if _, isMolecule := moleculesSet[part]; isMolecule {
-				curDivision = append(curDivision, part)
-				recurse(str[partEnd:])
-				curDivision = curDivision[:len(curDivision)-1]
+						recurse(newCurrent, nSteps+1)
+					}
+				}
 			}
 		}
+
 	}
 
-	recurse(str)
+	recurse(target, 0)
 
-	return divisions
+	fmt.Printf("least steps is %d\n", bestSteps)
 }
 
 func readInput() (map[string][]string, string) {
