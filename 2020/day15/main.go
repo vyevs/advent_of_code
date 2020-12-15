@@ -32,7 +32,7 @@ func doPart2(nums []int) {
 }
 
 func numberSpokenOnTurn(nums []int, targetTurn int) int {
-	turnsNumWasSpoken := make(map[int][2]int, len(nums))
+	turnsNumWasSpoken := make(map[int][2]int, targetTurn)
 
 	addTurnForNumber := func(num, turn int) {
 		turns := turnsNumWasSpoken[num]
