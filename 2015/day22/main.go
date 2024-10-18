@@ -166,7 +166,6 @@ func (b boss) attack(p player) player {
 }
 
 func castSpell(s int, p player, b boss) (player, boss, bool) {
-
 	switch s {
 	case magicMissile:
 		{
@@ -204,16 +203,4 @@ func castSpell(s int, p player, b boss) (player, boss, bool) {
 	p.manaUsed += s
 
 	return p, b, true
-}
-
-func (p player) String() string {
-	armor := 0
-	if p.shieldDur > 0 {
-		armor = shieldAmt
-	}
-	return fmt.Sprintf("Player has %d hit points, %d armor, %d mana", p.hp, armor, p.mana)
-}
-
-func (b boss) String() string {
-	return fmt.Sprintf("Boss has %d hit points", b.hp)
 }
