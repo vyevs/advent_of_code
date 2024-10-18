@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
 )
 
 func main() {
@@ -27,17 +26,16 @@ func determinePowerConsumption(in []string) int {
 
 func determineLifeSupportRating(in []string) int {
 	ogr := determineOxygenGeneratorRating(in)
-	fmt.Println(ogr)
 	co2sr := determineCO2ScrubberRating(in)
 	return ogr * co2sr
 }
 
 func determineGammaRate(in []string) int {
 	count0s := count0sByColumn(in)
-	
+
 	var res int
 	for i, ct := range count0s {
-		if ct <= len(in) / 2 {
+		if ct <= len(in)/2 {
 			res |= (1 << (len(in[0]) - 1 - i))
 		}
 	}
@@ -46,10 +44,10 @@ func determineGammaRate(in []string) int {
 
 func determineEpsilonRate(in []string) int {
 	count0s := count0sByColumn(in)
-	
+
 	var res int
 	for i, ct := range count0s {
-		if ct >= len(in) / 2 {
+		if ct >= len(in)/2 {
 			res |= (1 << (len(in[0]) - 1 - i))
 		}
 	}
@@ -73,55 +71,84 @@ func determineOxygenGeneratorRating(in []string) int {
 	for _, v := range in {
 		set[v] = struct{}{}
 	}
-	
+
 	var bitPos int
 	for len(set) > 1 {
-		bit := mostCommonBitAtPositionOxygenGenerator(in, bitPos)
-		
+		bit := mostCommonBitAtPosition(set, bitPos)
+
 		for v := range set {
-			if v[len(v)-1-bitPos] != bit {
+			if v[bitPos] != bit {
 				delete(set, v)
 			}
 		}
-		
+
 		bitPos++
 	}
-	
-	
+
 	var lastVal string
 	for v := range set {
 		lastVal = v
 	}
-	ret, _ := strconv.Atoi(lastVal)
-	return ret
+	return binStrToInt(lastVal)
+}
+
+func binStrToInt(s string) int {
+	var res int
+	for i, v := range s {
+		if v == '1' {
+			res |= (1 << (len(s) - i - 1))
+		}
+	}
+	return res
 }
 
 func determineCO2ScrubberRating(in []string) int {
-	return 0
+	set := make(map[string]struct{}, len(in))
+	for _, v := range in {
+		set[v] = struct{}{}
+	}
+
+	var bitPos int
+	for len(set) > 1 {
+		bit := leastCommonBitAtPosition(set, bitPos)
+
+		for v := range set {
+			if v[bitPos] != bit {
+				delete(set, v)
+			}
+		}
+
+		bitPos++
+	}
+
+	var lastVal string
+	for v := range set {
+		lastVal = v
+	}
+	return binStrToInt(lastVal)
 }
 
-func mostCommonBitAtPositionOxygenGenerator(in []string, pos int) byte {
+func mostCommonBitAtPosition(set map[string]struct{}, pos int) byte {
 	var count0s int
-	for _, v := range in {
-		if v[len(v)-1-pos] == '0' {
+	for v := range set {
+		if v[pos] == '0' {
 			count0s += 1
 		}
 	}
-	if count0s > len(in[0])/2 {
+	if count0s > len(set)/2 {
 		return '0'
 	}
 	return '1'
 }
 
-
-func mostCommonBitAtPositionCO2Scrubber(in []string, pos int) byte {
+func leastCommonBitAtPosition(set map[string]struct{}, pos int) byte {
 	var count0s int
-	for _, v := range in {
-		if v[len(v)-1-pos] == '0' {
+	for v := range set {
+		if v[pos] == '0' {
 			count0s += 1
 		}
 	}
-	if count0s >= len(in[0])/2 {
+	if count0s <= len(set)/2 {
 		return '0'
 	}
 	return '1'
@@ -129,12 +156,12 @@ func mostCommonBitAtPositionCO2Scrubber(in []string, pos int) byte {
 
 func getInput() []string {
 	scanner := bufio.NewScanner(os.Stdin)
-	
+
 	in := make([]string, 0, 1024)
 	for scanner.Scan() {
 		line := scanner.Text()
 		in = append(in, line)
 	}
-	
+
 	return in
 }
