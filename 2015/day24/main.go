@@ -2,100 +2,153 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"log"
 	"os"
-	"sort"
+	"slices"
 	"strconv"
+	"time"
 )
 
 func main() {
+	defer func(start time.Time) {
+		fmt.Printf("that took %v\n", time.Since(start))
+	}(time.Now())
+
 	weights := readWeights()
+
+	const nBuckets = 4
+
+	slices.SortFunc(weights, func(a, b int) int {
+		if a < b {
+			return 1
+		}
+		return -1
+	})
 
 	fmt.Printf("weights = %v\n", weights)
 
-	groupings := possibleEqualWeightGroupings(weights)
+	s := newSolver(weights, nBuckets)
+	solution := s.solve()
 
-	fmt.Printf("There are %d equal weight groupings\n", len(groupings))
-
-	sort.Slice(groupings, func(i, j int) bool {
-		return len(groupings[i][0]) < len(groupings[j][0])
-	})
-
-	firstLen := len(groupings[0][0])
-	firstN := 0
-	for i := 1; ; i++ {
-		firstN++
-		if len(groupings[i][0]) > firstLen {
-			break
-		}
-	}
-
-	sort.Slice(groupings[:firstN], func(i, j int) bool {
-		return len(groupings[i][0]) < len(groupings[j][0])
-	})
-
-	fmt.Printf("Quantum entaglement of first group in ideal configuration is %d\n", product(groupings[0][0]))
+	fmt.Printf("the best package grouping is %v\n", solution)
+	fmt.Printf("the quantum entanglement of the 1st group is %d\n", product(solution[0]))
 }
 
-func product(ns []int) int {
-	prod := 1
-	for _, v := range ns {
-		prod *= v
+func newSolver(weights []int, nBuckets int) *solver {
+	weightSum := sum(weights)
+
+	if weightSum%nBuckets != 0 {
+		log.Fatalf("the sum of the weights is not divisible by the number of buckets %d, there is no solution", nBuckets)
 	}
-	return prod
+
+	groups := make([][]int, nBuckets)
+	for i := range nBuckets {
+		groups[i] = make([]int, 0, len(weights))
+	}
+
+	s := solver{
+		weights:       weights,
+		oneThirdTotal: weightSum / nBuckets,
+		groups:        groups,
+		weightTotals:  make([]int, nBuckets),
+		bestLenSoFar:  len(weights),
+		bestQESoFar:   10e10,
+	}
+	for i := range nBuckets {
+		s.groups[i] = make([]int, 0, len(weights))
+	}
+
+	return &s
 }
 
-func possibleEqualWeightGroupings(weights []int) [][3][]int {
-	assignments := make([]int, len(weights))
+type solver struct {
+	weights       []int
+	oneThirdTotal int
 
-	var recurse func(weightIdx int)
+	groups       [][]int
+	weightTotals []int
 
-	groupings := make([][3][]int, 0, 1024)
+	bestLenSoFar int
+	bestQESoFar  int
+	solution     [][]int
+}
 
-	recurse = func(weightIdx int) {
-		if weightIdx == len(weights) {
-			if allSameWeight(weights, assignments) {
+func (s *solver) solve() [][]int {
+	s.recurse(0)
+	return s.solution
+}
 
-				var grouping [3][]int
+func (s *solver) recurse(idx int) {
+	if idx == len(s.weights) {
+		if allEqual(s.weightTotals) {
+			solLength := len(s.groups[0])
 
-				for i, assignment := range assignments {
-					grouping[assignment-1] = append(grouping[assignment-1], weights[i])
+			if solLength < s.bestLenSoFar {
+				s.solution = cloneGroups(s.groups)
+				s.bestLenSoFar = solLength
+
+			} else {
+				quantumEntanglement := product(s.groups[0])
+
+				if quantumEntanglement < s.bestQESoFar {
+					s.solution = cloneGroups(s.groups)
+					s.bestQESoFar = quantumEntanglement
 				}
 
-				groupings = append(groupings, grouping)
 			}
-
-		} else {
-
-			for i := 1; i <= 3; i++ {
-				assignments[weightIdx] = i
-				recurse(weightIdx + 1)
-			}
-
 		}
+		return
 	}
 
-	recurse(0)
+	if len(s.groups[0]) > s.bestLenSoFar {
+		return
+	}
 
-	return groupings
+	weight := s.weights[idx]
+
+	for i := range s.groups {
+		s.groups[i] = append(s.groups[i], weight)
+		s.weightTotals[i] += weight
+
+		if s.weightTotals[i] <= s.oneThirdTotal {
+			s.recurse(idx + 1)
+		}
+
+		s.groups[i] = s.groups[i][:len(s.groups[i])-1]
+		s.weightTotals[i] -= weight
+	}
 }
 
-func allSameWeight(weights, assignments []int) bool {
-	var sums [3]int
-
-	for i, weight := range weights {
-		sums[assignments[i]-1] += weight
+func cloneGroups(gs [][]int) [][]int {
+	out := make([][]int, len(gs))
+	for i, g := range gs {
+		out[i] = slices.Clone(g)
 	}
+	return out
+}
 
-	return sums[0] == sums[1] && sums[1] == sums[2]
+func allEqual(vs []int) bool {
+	for i := range len(vs) - 1 {
+		if vs[i] != vs[i+1] {
+			return false
+		}
+	}
+	return true
 }
 
 func readWeights() []int {
-	scanner := bufio.NewScanner(os.Stdin)
+	bs, err := os.ReadFile("input.txt")
+	if err != nil {
+		log.Fatalf("failed to read file: %v", err)
+	}
+
+	sc := bufio.NewScanner(bytes.NewReader(bs))
 
 	weights := make([]int, 0, 64)
-	for scanner.Scan() {
-		line := scanner.Text()
+	for sc.Scan() {
+		line := sc.Text()
 
 		weight, _ := strconv.Atoi(line)
 
@@ -103,4 +156,20 @@ func readWeights() []int {
 	}
 
 	return weights
+}
+
+func sum(s []int) int {
+	sm := 0
+	for _, v := range s {
+		sm += v
+	}
+	return sm
+}
+
+func product(s []int) int {
+	p := 1
+	for _, v := range s {
+		p *= v
+	}
+	return p
 }
