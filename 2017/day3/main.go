@@ -39,39 +39,40 @@ func distanceTo(sq int) int {
 		// The -1 is because moving up always has 1 fewer steps because we step into a square 1 above the square's bottom right corner.
 		stepsUp := stepsPerSide - 1
 		for range stepsUp {
+			move(0, 1)
+
 			if at == sq {
 				return abs(x) + abs(y)
 			}
-
-			move(0, 1)
 		}
 
 		stepsLeft := stepsPerSide
 		for range stepsLeft {
+			move(-1, 0)
+
 			if at == sq {
 				return abs(x) + abs(y)
 			}
-
-			move(-1, 0)
 		}
 
 		stepsDown := stepsPerSide
 		for range stepsDown {
+			move(0, -1)
+
 			if at == sq {
 				return abs(x) + abs(y)
 			}
-
-			move(0, -1)
 		}
 
 		// The + 1 is so we step into the next bigger square, e.g. 1 -> 2, 9 -> 10, 25 -> 26, 49 -> 50 ...
 		stepsRight := stepsPerSide + 1
 		for range stepsRight {
+			move(1, 0)
+
 			if at == sq {
 				return abs(x) + abs(y)
 			}
 
-			move(1, 0)
 		}
 
 		sqSideLen += 2
@@ -81,12 +82,11 @@ func distanceTo(sq int) int {
 }
 
 func adjacentValues(target int) int {
-	at := 1
 	x, y := 0, 0
 	sqSideLen := 1
 
 	seen := make(map[[2]int]int, 1<<16)
-	seen[[2]int{x, y}] = at
+	seen[[2]int{x, y}] = 1
 
 	// sumOfAdjacents returns the sum of all squares adjacent to [x, y]. Some of these squares may not have a value, they don't matter.
 	sumOfAdjacents := func(x, y int) int {
@@ -103,7 +103,6 @@ func adjacentValues(target int) int {
 	move := func(dx, dy int) {
 		x += dx
 		y += dy
-		at++
 	}
 
 	for {

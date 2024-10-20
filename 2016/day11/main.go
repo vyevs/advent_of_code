@@ -2,58 +2,32 @@ package main
 
 import (
 	"fmt"
+	"hash/maphash"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const (
-	elevator byte = iota
-	hg
-	hm
-	lg
-	lm
-
-	firstItem      = hg
-	lastItem       = lm
-	bottom    byte = 1
-	top       byte = 4
-)
-
-func itemStr(item byte) string {
-	switch item {
-	case hg:
-		return "HG"
-	case hm:
-		return "HM"
-	case lg:
-		return "LG"
-	case lm:
-		return "LM"
-	}
-	panic(fmt.Sprintf("unknown item %c", item))
-}
-
-func stateStr(state [5]byte) string {
+func (p params) stateStr(state []byte) string {
 	var b strings.Builder
 	b.Grow(128)
 
-	for floor := top; floor >= bottom; floor-- {
+	for floor := p.topFloor; floor >= p.bottomFloor; floor-- {
 
 		b.WriteByte('F')
 		b.WriteString(strconv.Itoa(int(floor)))
 		b.WriteByte(' ')
 
-		if state[elevator] == floor {
+		if state[0] == floor { // elevator.
 			b.WriteString("E  ")
 		} else {
 			b.WriteString(".  ")
 		}
 
-		for item := firstItem; item <= lastItem; item++ {
+		for item := 1; item <= p.nItems; item++ {
 			if state[item] == floor {
-				b.WriteString(itemStr(item))
+				b.WriteString(p.names[item])
 				b.WriteByte(' ')
 			} else {
 				b.WriteString(".  ")
@@ -66,87 +40,111 @@ func stateStr(state [5]byte) string {
 	return b.String()
 }
 
-var initialState = [5]byte{1, 2, 1, 3, 1}
-var desiredState = [5]byte{4, 4, 4, 4, 4}
+func (p params) validState(state []byte) bool {
 
-func hm_ok(state [5]byte) bool {
-	return state[hm] == state[hg] || state[hm] != state[lg]
+	for item := 1; item <= p.nItems; item++ {
+		itemFloor := state[item]
+		itemName := p.names[item]
+
+		if itemName[1] == 'G' {
+			continue
+		}
+
+		var haveSameGen, haveOtherGen bool
+		for other := 1; other <= p.nItems; other++ {
+			if item == other {
+				continue
+			}
+			otherFloor := state[other]
+
+			if itemFloor == otherFloor {
+				otherName := p.names[other]
+
+				if otherName[1] == 'G' {
+					if itemName[0] != otherName[0] {
+						haveOtherGen = true
+					} else {
+						haveSameGen = true
+					}
+				}
+			}
+		}
+
+		if haveOtherGen && !haveSameGen {
+			return false
+		}
+	}
+
+	return true
 }
 
-func lm_ok(state [5]byte) bool {
-	return state[lm] == state[lg] || state[lm] != state[hg]
-}
-
-func valid_state(state [5]byte) bool {
-	return hm_ok(state) && lm_ok(state)
-}
-
-func shouldMoveDown(state [5]byte) bool {
-	for i := firstItem; i <= lastItem; i++ {
-		if state[i] < state[elevator] {
+func shouldGoDown(state []byte) bool {
+	elevatorFloor := state[0]
+	for i := 1; i < len(state); i++ {
+		if state[i] < elevatorFloor {
 			return true
 		}
 	}
 	return false
 }
 
-func get_unseen_next_states(state [5]byte, seen map[[5]byte]bool) [][5]byte {
-	nextStates := make([][5]byte, 0, 32)
+func (p params) get_unseen_next_states(state []byte, seen map[uint64]bool) [][]byte {
+	nextStates := make([][]byte, 0, 32)
 
-	shouldMoveDown := shouldMoveDown(state)
+	elevator := 0
+	elevatorFloor := state[elevator]
 
-	for i := firstItem; i <= lastItem; i++ {
-		if state[i] != state[elevator] {
+	shouldGoDown := shouldGoDown(state)
+
+	for i := 1; i <= p.nItems; i++ {
+		if state[i] != elevatorFloor {
 			continue
 		}
 
-		var broughtOneDown bool
-		if shouldMoveDown && state[elevator] > bottom {
-			nextState := state
-			nextState[elevator]--
-			nextState[i]--
-			if valid_state(nextState) && !seen[nextState] {
-				nextStates = append(nextStates, nextState)
-				broughtOneDown = true
-			}
-		}
-
+		var broughtTwoDown bool
 		var broughtTwoUp bool
-		for j := firstItem; j <= lastItem; j++ {
-			if i == j {
-				continue
-			}
-			if state[j] != state[elevator] {
+		for j := i + 1; j <= p.nItems; j++ {
+			if state[j] != elevatorFloor {
 				continue
 			}
 
-			if state[elevator] < top {
-				nextState := state
+			if elevatorFloor < p.topFloor {
+				nextState := slices.Clone(state)
 				nextState[elevator]++
 				nextState[i]++
 				nextState[j]++
-				if valid_state(nextState) && !seen[nextState] {
+				if p.validState(nextState) && !seen[p.hashState(nextState)] {
 					nextStates = append(nextStates, nextState)
 					broughtTwoUp = true
 				}
 			}
 
-			if shouldMoveDown && !broughtOneDown && state[elevator] > bottom {
-				nextState := state
+			if elevatorFloor > p.bottomFloor && shouldGoDown {
+				nextState := slices.Clone(state)
 				nextState[elevator]--
 				nextState[i]--
 				nextState[j]--
-				if valid_state(nextState) && !seen[nextState] {
+				if p.validState(nextState) && !seen[p.hashState(nextState)] {
 					nextStates = append(nextStates, nextState)
+					broughtTwoDown = true
 				}
 			}
 		}
 
-		if !broughtTwoUp && state[elevator] < top {
-			nextState := state
+		if state[elevator] < p.topFloor && !broughtTwoUp {
+			nextState := slices.Clone(state)
 			nextState[elevator]++
 			nextState[i]++
-			if valid_state(nextState) && !seen[nextState] {
+			if p.validState(nextState) && !seen[p.hashState(nextState)] {
+				nextStates = append(nextStates, nextState)
+			}
+		}
+
+		if elevatorFloor > p.bottomFloor && shouldGoDown && !broughtTwoDown {
+			nextState := slices.Clone(state)
+			nextState[elevator]--
+			nextState[i]--
+			if p.validState(nextState) && !seen[p.hashState(nextState)] {
 				nextStates = append(nextStates, nextState)
 			}
 		}
@@ -156,14 +154,24 @@ func get_unseen_next_states(state [5]byte, seen map[[5]byte]bool) [][5]byte {
 	return nextStates
 }
 
-func bfs(start [5]byte) [][5]byte {
+func bfs(p params, start []byte) [][]byte {
+	desiredState := make([]byte, 0, p.nItems)
+	for range p.nItems + 1 {
+		desiredState = append(desiredState, p.topFloor)
+	}
+
+	fmt.Println("initial state:")
+	fmt.Println(p.stateStr(start))
+
+	fmt.Println(p.validState(start))
+
 	type node struct {
-		state  [5]byte
+		state  []byte
 		parent *node
 	}
 
-	collect_result := func(end *node) [][5]byte {
-		path := make([][5]byte, 0, 16)
+	collect_result := func(end *node) [][]byte {
+		path := make([][]byte, 0, 16)
 		for cur := end; cur != nil; cur = cur.parent {
 			path = append(path, cur.state)
 		}
@@ -171,35 +179,75 @@ func bfs(start [5]byte) [][5]byte {
 		return path
 	}
 
-	queue := make([]node, 0, 1024)
+	queue := make([]node, 0, 1<<16)
 	queue = append(queue, node{state: start})
 
-	seen := make(map[[5]byte]bool, 1024)
+	seen := make(map[uint64]bool, 1<<16)
 
 	for len(queue) > 0 {
 		n := queue[0]
 		queue = queue[1:]
 
-		seen[n.state] = true
+		seen[p.hashState(n.state)] = true
 
-		if n.state == desiredState {
+		if slices.Equal(n.state, desiredState) {
 			return collect_result(&n)
 		}
 
-		next_states := get_unseen_next_states(n.state, seen)
+		next_states := p.get_unseen_next_states(n.state, seen)
 		for _, ns := range next_states {
-			if !seen[ns] {
-				n := node{
-					state:  ns,
-					parent: &n,
-				}
-				queue = append(queue, n)
+			childNode := node{
+				state:  ns,
+				parent: &n,
 			}
+			queue = append(queue, childNode)
 		}
-
 	}
 
 	return nil
+}
+
+func example() {
+	p := params{
+		bottomFloor: 1,
+		topFloor:    4,
+
+		nItems:   4,
+		names:    []string{"E", "HM", "LM", "HG", "LG"},
+		hashSeed: maphash.MakeSeed(),
+	}
+
+	initialState := []byte{1, 1, 1, 2, 3}
+
+	path := bfs(p, initialState)
+	if path == nil {
+		fmt.Println("didn't make it")
+	} else {
+		fmt.Printf("made it in %d steps\n", len(path)-1)
+	}
+}
+
+func input() {
+	p := params{
+		bottomFloor: 1,
+		topFloor:    4,
+
+		nItems:   10,
+		names:    []string{"E", "SG", "SM", "PG", "PM", "TG", "RG", "RM", "CG", "CM", "TM"},
+		hashSeed: maphash.MakeSeed(),
+	}
+
+	initialState := []byte{1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3}
+
+	path := bfs(p, initialState)
+	if path == nil {
+		fmt.Println("didn't make it")
+	} else {
+		fmt.Printf("made it in %d steps\n", len(path)-1)
+		for _, s := range path {
+			fmt.Println(p.stateStr(s))
+		}
+	}
 }
 
 func main() {
@@ -207,13 +255,20 @@ func main() {
 		fmt.Printf("that took %s\n", time.Since(start))
 	}(time.Now())
 
-	path := bfs(initialState)
-	if path == nil {
-		fmt.Println("didn't make it")
-	} else {
-		fmt.Printf("made it in %d steps\n", len(path)-1)
-		for _, s := range path {
-			fmt.Println(stateStr(s))
-		}
-	}
+	example()
+	input()
+}
+
+type params struct {
+	bottomFloor byte
+	topFloor    byte
+
+	nItems int
+	names  []string
+
+	hashSeed maphash.Seed
+}
+
+func (p params) hashState(state []byte) uint64 {
+	return maphash.Bytes(p.hashSeed, state)
 }
