@@ -7,10 +7,6 @@ fn main() {
 		println('that took ${time.since(start)}')
 	}	
 
-	do_it() or { eprintln('error: ${err}') }
-}
-
-fn do_it() ! {
 	input := 277678
 	inputs := [1, 12, 23, 1024, input]
 
@@ -22,7 +18,6 @@ fn do_it() ! {
 	gt_input := first_greater_than(input)
 	println('the first value greater than ${input} is ${gt_input}')
 }
-
 
 fn distance_to(sq int) int {
 	mut at := 1
