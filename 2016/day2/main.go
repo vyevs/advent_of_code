@@ -9,6 +9,7 @@ import (
 
 func main() {
 	f, _ := os.Open(os.Args[1])
+	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
 
