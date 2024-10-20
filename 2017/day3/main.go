@@ -5,7 +5,6 @@ import (
 )
 
 func main() {
-
 	input := 277678
 	sqrs := []int{1, 12, 23, 1024, input}
 
@@ -22,72 +21,78 @@ func main() {
 func distanceTo(sq int) int {
 	at := 1
 	x, y := 0, 0
-	odd := 1
+	sqSideLen := 1
 
-	for {
-		if at == sq {
-			return abs(x) + abs(y)
-		}
+	move := func(dx, dy int) {
+		x += dx
+		y += dy
+		at++
+	}
 
-		stepsToNextCorner := odd*odd - (at - 1)
-		stepsPerSide := stepsToNextCorner / 4
+	for at != sq {
+		// At the beginning of each iteration, we are on the cell above the bottom right corner of the square we're on.
+		// We traverse this square's sides during this iteration.
+
+		// It takes n-1 steps to move across a segment of length n
+		stepsPerSide := sqSideLen - 1
 
 		// The -1 is because moving up always has 1 fewer steps because we step into a square 1 above the square's bottom right corner.
-		for range stepsPerSide - 1 {
+		stepsUp := stepsPerSide - 1
+		for range stepsUp {
 			if at == sq {
 				return abs(x) + abs(y)
 			}
 
-			y++ // up
-			at++
+			move(0, 1)
 		}
-		for range stepsPerSide {
-			if at == sq {
-				return abs(x) + abs(y)
-			}
-			x-- // left
-			at++
-		}
-		for range stepsPerSide {
+
+		stepsLeft := stepsPerSide
+		for range stepsLeft {
 			if at == sq {
 				return abs(x) + abs(y)
 			}
 
-			y-- // down
-			at++
+			move(-1, 0)
+		}
+
+		stepsDown := stepsPerSide
+		for range stepsDown {
+			if at == sq {
+				return abs(x) + abs(y)
+			}
+
+			move(0, -1)
 		}
 
 		// The + 1 is so we step into the next bigger square, e.g. 1 -> 2, 9 -> 10, 25 -> 26, 49 -> 50 ...
-		for range stepsPerSide + 1 {
+		stepsRight := stepsPerSide + 1
+		for range stepsRight {
 			if at == sq {
 				return abs(x) + abs(y)
 			}
-			x++ // right
-			at++
+
+			move(1, 0)
 		}
 
-		odd += 2
+		sqSideLen += 2
 	}
 
-	panic("AHHHH")
+	return abs(x) + abs(y)
 }
 
 func adjacentValues(target int) int {
 	at := 1
 	x, y := 0, 0
-	odd := 1
+	sqSideLen := 1
 
 	seen := make(map[[2]int]int, 1<<16)
 	seen[[2]int{x, y}] = at
 
+	// sumOfAdjacents returns the sum of all squares adjacent to [x, y]. Some of these squares may not have a value, they don't matter.
 	sumOfAdjacents := func(x, y int) int {
 		var sum int
 		for dx := -1; dx <= 1; dx++ {
 			for dy := -1; dy <= 1; dy++ {
-				if dx == 0 && dy == 0 {
-					continue
-				}
-
 				sum += seen[[2]int{x + dx, y + dy}]
 			}
 		}
@@ -95,14 +100,18 @@ func adjacentValues(target int) int {
 		return sum
 	}
 
+	move := func(dx, dy int) {
+		x += dx
+		y += dy
+		at++
+	}
+
 	for {
-		stepsToNextCorner := odd*odd - (at - 1)
-		stepsPerSide := stepsToNextCorner / 4
+		stepsPerSide := sqSideLen - 1
 
 		// The -1 is because moving up always has 1 fewer steps. This is because we step into a square 1 above the square's bottom right corner.
 		for range stepsPerSide - 1 {
-			y++ // up
-			at++
+			move(0, 1) // up
 
 			s := sumOfAdjacents(x, y)
 			if s > target {
@@ -111,8 +120,7 @@ func adjacentValues(target int) int {
 			seen[[2]int{x, y}] = s
 		}
 		for range stepsPerSide {
-			x-- // left
-			at++
+			move(-1, 0) // left
 
 			s := sumOfAdjacents(x, y)
 			if s > target {
@@ -121,8 +129,7 @@ func adjacentValues(target int) int {
 			seen[[2]int{x, y}] = s
 		}
 		for range stepsPerSide {
-			y-- // down
-			at++
+			move(0, -1) // down
 
 			s := sumOfAdjacents(x, y)
 			if s > target {
@@ -133,8 +140,7 @@ func adjacentValues(target int) int {
 
 		// The + 1 is so we step into the next bigger square, e.g. moves between squares 1 -> 2, 9 -> 10, 25 -> 26, 49 -> 50 ...
 		for range stepsPerSide + 1 {
-			x++ // right
-			at++
+			move(1, 0) // right
 
 			s := sumOfAdjacents(x, y)
 			if s > target {
@@ -143,7 +149,7 @@ func adjacentValues(target int) int {
 			seen[[2]int{x, y}] = s
 		}
 
-		odd += 2
+		sqSideLen += 2
 	}
 
 	panic("EVEN MORE AHHHH")
