@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"os"
 )
 
 func main() {
@@ -27,7 +26,7 @@ func main() {
 
 		if startsWith6Zeroes(hexEncoding) {
 			fmt.Printf("%d\n%s\n%s\n", i, str, hexEncoding)
-			os.Exit(0)
+			break
 		}
 
 		hasher.Reset()

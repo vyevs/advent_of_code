@@ -1,32 +1,21 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		log.Fatalf("provide input file")
+	if err := doIt(); err != nil {
+		fmt.Printf("error: %v", err)
 	}
+}
 
-	inFile := os.Args[1]
-
-	f, err := os.Open(inFile)
+func doIt() error {
+	fileBytes, err := os.ReadFile(os.Args[1])
 	if err != nil {
-		log.Fatalf("os.Open: %v", err)
+		return fmt.Errorf("failed to read file: %v", err)
 	}
-
-	bufR := bufio.NewReader(f)
-
-	fileBytes, err := ioutil.ReadAll(bufR)
-	if err != nil {
-		log.Fatalf("ReadAll: %v", err)
-	}
-	f.Close()
 
 	var floor int
 	var firstEnteredBasement int
@@ -43,4 +32,6 @@ func main() {
 
 	fmt.Println(floor)
 	fmt.Println(firstEnteredBasement)
+
+	return nil
 }
