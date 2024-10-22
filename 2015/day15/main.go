@@ -39,8 +39,7 @@ func doIt(cookies []cookie, part2 bool) int {
 	fn = func() {
 		// If we've picked the amounts of all but one cookie...
 		if len(cookieCounts) == len(cookies)-1 {
-			nLastCookie := totalCookies - vtools.SumSlice(cookieCounts)
-			cookieCounts.Push(nLastCookie)
+			cookieCounts.Push(cookiesLeft)
 			defer cookieCounts.Pop()
 
 			if part2 && totalCalories(cookies, cookieCounts) != 500 {
