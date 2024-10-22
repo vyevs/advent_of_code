@@ -80,7 +80,6 @@ func (pw pw) String() string {
 }
 
 func next(pw pw) pw {
-
 	carry := true
 	for i := pw.bsLen - 1; i >= pw.bsLen-pw.pwLen && carry; i-- {
 		pw.bs[i]++

@@ -1,25 +1,23 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
+
+	"github.com/vyevs/vtools"
 )
 
 func main() {
-	f, err := os.Open(os.Args[1])
+	lines, err := vtools.ReadLines(os.Args[1])
 	if err != nil {
-		log.Fatalf("Open: %v", err)
+		log.Fatalf("ReadLines: %v", err)
 	}
-
-	scanner := bufio.NewScanner(f)
 
 	var sum int
 	var encSum int
 
-	for scanner.Scan() {
-		line := scanner.Text()
+	for _, line := range lines {
 
 		codeLen := codeLength(line)
 
@@ -28,10 +26,6 @@ func main() {
 		encLen := encodedLen(line)
 
 		encSum += encLen - len(line)
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("scanner: %v", err)
 	}
 
 	fmt.Println(sum)

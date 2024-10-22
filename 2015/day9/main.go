@@ -1,12 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/vyevs/vtools"
 )
 
 type distanceMap map[path]int
@@ -26,18 +28,15 @@ type path struct {
 }
 
 func main() {
-	f, err := os.Open(os.Args[1])
+	lines, err := vtools.ReadLines(os.Args[1])
 	if err != nil {
-		log.Fatalf("Open: %v", err)
+		log.Fatalf("ReadLines: %v", err)
 	}
-
-	scanner := bufio.NewScanner(f)
 
 	cities := make([]string, 0, 64)
 	distances := distanceMap(make(map[path]int, 1024))
 
-	for i := 1; scanner.Scan(); i++ {
-		line := scanner.Text()
+	for i, line := range lines {
 
 		tokens := strings.Split(line, " ")
 
@@ -50,18 +49,14 @@ func main() {
 			log.Fatalf("error parsing distance on line %d: %v", i, err)
 		}
 
-		if !contains(cities, city1) {
+		if !slices.Contains(cities, city1) {
 			cities = append(cities, city1)
 		}
-		if !contains(cities, city2) {
+		if !slices.Contains(cities, city2) {
 			cities = append(cities, city2)
 		}
 
 		distances.addDistance(city1, city2, dist)
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("scanner: %v", err)
 	}
 
 	bestTraversalDist := travellingSalesman(cities, distances)
@@ -70,7 +65,6 @@ func main() {
 }
 
 func travellingSalesman(cities []string, distances distanceMap) int {
-
 	visitOrder := make([]string, 0, len(cities))
 	visited := make([]bool, len(cities)) // whether cities[i] has been visited
 	var best int
@@ -103,17 +97,8 @@ func travellingSalesman(cities []string, distances distanceMap) int {
 
 func traversalDistance(visitOrder []string, distances distanceMap) int {
 	var dist int
-	for i := 0; i < len(visitOrder)-1; i++ {
+	for i := range len(visitOrder) - 1 {
 		dist += distances.distance(visitOrder[i], visitOrder[i+1])
 	}
 	return dist
-}
-
-func contains(strs []string, s string) bool {
-	for _, str := range strs {
-		if str == s {
-			return true
-		}
-	}
-	return false
 }

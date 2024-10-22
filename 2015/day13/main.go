@@ -1,12 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"slices"
 	"strconv"
-	"strings"
+
+	"github.com/vyevs/vtools"
 )
 
 type pair struct {
@@ -15,47 +17,26 @@ type pair struct {
 }
 
 func main() {
-	f, err := os.Open(os.Args[1])
+	lines, err := vtools.ReadLines(os.Args[1])
 	if err != nil {
-		log.Fatalf("Open: %v", err)
+		log.Fatalf("ReadLines: %v", err)
 	}
-
-	scanner := bufio.NewScanner(f)
 
 	m := make(map[pair]int, 1024)
 	people := make([]string, 0, 1024)
 
-	for i := 1; scanner.Scan(); i++ {
-		line := scanner.Text()
-
-		tokens := strings.Split(line, " ")
-
-		person := tokens[0]
-		nextTo := tokens[10]
-		nextTo = nextTo[:len(nextTo)-1]
-
-		amt, err := strconv.Atoi(tokens[3])
-		if err != nil {
-			log.Fatalf("error parsing int on line %d", i)
-		}
+	for _, line := range lines {
+		person, amt, nextTo := parseLine(line)
 
 		pair := pair{person: person, nextTo: nextTo}
-		if tokens[2] == "gain" {
-			m[pair] = amt
-		} else {
-			m[pair] = -amt
-		}
+		m[pair] = amt
 
-		if !contains(people, person) {
+		if !slices.Contains(people, person) {
 			people = append(people, person)
 		}
-		if !contains(people, nextTo) {
+		if !slices.Contains(people, nextTo) {
 			people = append(people, nextTo)
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("scanner: %v", err)
 	}
 
 	for _, person := range people {
@@ -92,22 +73,12 @@ func main() {
 	fn()
 
 	fmt.Println(best)
-
-}
-
-func contains(strs []string, target string) bool {
-	for _, s := range strs {
-		if s == target {
-			return true
-		}
-	}
-	return false
 }
 
 func happinessChange(seating []string, gain map[pair]int) int {
 	var hc int
 
-	for i := 0; i < len(seating)-1; i++ {
+	for i := range len(seating) - 1 {
 		hc += gain[pair{person: seating[i], nextTo: seating[i+1]}]
 		hc += gain[pair{person: seating[i+1], nextTo: seating[i]}]
 	}
@@ -116,4 +87,23 @@ func happinessChange(seating []string, gain map[pair]int) int {
 	hc += gain[pair{person: seating[len(seating)-1], nextTo: seating[0]}]
 
 	return hc
+}
+
+var re = regexp.MustCompile(`^(\w+) would (gain|lose) (\d+) happiness units by sitting next to (\w+)\.$`)
+
+func parseLine(line string) (string, int, string) {
+	captures := re.FindStringSubmatch(line)
+
+	p1 := captures[1]
+
+	amtStr := captures[3]
+	amt, _ := strconv.Atoi(amtStr)
+
+	if captures[2] == "lose" {
+		amt = -amt
+	}
+
+	p2 := captures[4]
+
+	return p1, amt, p2
 }

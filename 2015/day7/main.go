@@ -27,20 +27,10 @@ func main() {
 	}
 	f.Close()
 
-	/*
-		for _, op := range ops {
-			fmt.Println(&op)
-		}*/
-
 	wires, err := evaluateOps(ops)
 	if err != nil {
 		handleEvaluationErr(err)
 	}
-
-	/*
-		for wire, value := range wires {
-			fmt.Printf("%s: %d\n", wire, value)
-		}*/
 
 	fmt.Printf("wire a: %d\n", wires["a"])
 

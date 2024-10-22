@@ -17,6 +17,7 @@ func main() {
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		log.Fatalf("Decode: %v", err)
 	}
+	f.Close()
 
 	var sumf func(interface{}) float64
 	sumf = func(i interface{}) float64 {
