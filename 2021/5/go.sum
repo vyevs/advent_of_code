@@ -1,0 +1,4 @@
+github.com/vyevs/vtools v0.0.6 h1:daSqKzyT/Bx5IE/DYdzMgiGZJz/e5YQs5XAnWLVL7I8=
+github.com/vyevs/vtools v0.0.6/go.mod h1:3fS13BRF4hndl05s3Bl2m6razdHekegSiKBAnoRiFd4=
+golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c h1:7dEasQXItcW1xKJ2+gg5VOiBnqWrJc+rq0DPKyvvdbY=
+golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c/go.mod h1:NQtJDoLvd6faHhE7m4T/1IY708gDefGGjR/iUW8yQQ8=

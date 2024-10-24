@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/vyevs/vtools"
 )
 
 func main() {
@@ -16,38 +17,37 @@ func main() {
 
 func doPart1(boards []board, calledNums []int) {
 	winnerBoard, winningNum := determineWinner(boards, calledNums)
-	fmt.Printf("Part 1: %d\n", winnerBoard.sumOfUnseen() * winningNum)
+	fmt.Printf("Part 1: %d\n", winnerBoard.sumOfUnseen()*winningNum)
 }
 
 func doPart2(boards []board, calledNums []int) {
 	lastToWin, winningNum := determineLastToWin(boards, calledNums)
-	fmt.Printf("Part 2: %d\n", lastToWin.sumOfUnseen() * winningNum)
+	fmt.Printf("Part 2: %d\n", lastToWin.sumOfUnseen()*winningNum)
 }
 
 func determineLastToWin(bs []board, calledNums []int) (lastToWin board, winningNumber int) {
-	incompleteBoards := make(map[int]struct{}, len(bs))
-	for i := range bs {
-		incompleteBoards[i] = struct{}{}
-	}
-	
+	completed := make([]bool, len(bs)) // completed[i] is whether the ith has won.
+	nIncomplete := len(bs)             // Number of incomplete boards left.
+
 	for _, cn := range calledNums {
 		for i := range bs {
 			b := &bs[i]
-			
-			if _, isIncomplete := incompleteBoards[i]; isIncomplete {
+
+			if !completed[i] {
 				b.markSeen(cn)
-				
+
 				if b.won() {
-					if len(incompleteBoards) == 1 {
+					if nIncomplete == 1 {
 						return *b, cn
 					} else {
-						delete(incompleteBoards, i)
+						completed[i] = true
+						nIncomplete--
 					}
 				}
 			}
 		}
 	}
-	
+
 	panic("no winner")
 }
 
@@ -55,15 +55,15 @@ func determineWinner(bs []board, calledNums []int) (winner board, winningNumber 
 	for _, cn := range calledNums {
 		for i := range bs {
 			b := &bs[i]
-			
+
 			b.markSeen(cn)
-			
+
 			if b.won() {
 				return *b, cn
 			}
 		}
 	}
-	
+
 	panic("no winner")
 }
 
@@ -87,9 +87,9 @@ func (b board) won() bool {
 }
 
 func (b board) completedAtLeastOneRow() bool {
-	outer:
-	for r := 0; r < 5; r++ {
-		for c := 0; c < 5; c++ {
+outer:
+	for r := range 5 {
+		for c := range 5 {
 			if !b.seen[r][c] {
 				continue outer
 			}
@@ -100,10 +100,9 @@ func (b board) completedAtLeastOneRow() bool {
 }
 
 func (b board) completedAtLeastOneColumn() bool {
-
-	outer:
-	for c := 0; c < 5; c++ {
-		for r := 0; r < 5; r++ {
+outer:
+	for c := range 5 {
+		for r := range 5 {
 			if !b.seen[r][c] {
 				continue outer
 			}
@@ -115,8 +114,8 @@ func (b board) completedAtLeastOneColumn() bool {
 
 func (b board) sumOfUnseen() int {
 	var sum int
-	for r := 0; r < 5; r++ {
-		for c := 0; c < 5; c++ {
+	for r := range 5 {
+		for c := range 5 {
 			if !b.seen[r][c] {
 				sum += b.nums[r][c]
 			}
@@ -131,22 +130,24 @@ func (b board) String() string {
 	for rowN, row := range b.nums {
 		for i, v := range row {
 			if i != 0 {
-				buf.WriteRune(' ')
+				buf.WriteByte(' ')
 			}
 			buf.WriteString(fmt.Sprintf("%2d", v))
 		}
-		if rowN < len(b.nums) - 1 {
-			buf.WriteRune('\n')
+		if rowN < len(b.nums)-1 {
+			buf.WriteByte('\n')
 		}
 	}
 	return buf.String()
 }
 
 func getInput() ([]int, []board) {
-	scnr := bufio.NewScanner(os.Stdin)
+	lines, err := vtools.ReadLines(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
 
-	scnr.Scan()
-	line1 := scnr.Text()
+	line1 := lines[0]
 	line1Split := strings.Split(line1, ",")
 	calledNums := make([]int, 0, len(line1Split))
 	for _, calledStr := range line1Split {
@@ -155,15 +156,16 @@ func getInput() ([]int, []board) {
 	}
 
 	boards := make([]board, 0, 64)
-	for scnr.Scan() { // for the empty line at the beginning
+	lineNum := 1
+	for lineNum < len(lines) { // for the empty line at the beginning
 		var b board
-		for i := 0; i < 5; i++ {
-			scnr.Scan()
-			line := scnr.Text()
-			nums := strings.Split(line, " ")
-			nums = removeEmpties(nums)
-			
-			for j := 0; j < 5; j++ {
+		for i := range 5 {
+			line := lines[lineNum]
+			lineNum++
+
+			nums := vtools.SplitWS(line)
+
+			for j := range 5 {
 				v, _ := strconv.Atoi(nums[j])
 				b.nums[i][j] = v
 			}
@@ -172,14 +174,4 @@ func getInput() ([]int, []board) {
 	}
 
 	return calledNums, boards
-}
-
-func removeEmpties(strs []string) []string {
-	ret := make([]string, 0, 5)
-	for _, s := range strs {
-		if s != "" {
-			ret = append(ret, s)
-		}
-	}
-	return ret
 }

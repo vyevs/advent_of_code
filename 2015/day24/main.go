@@ -1,31 +1,25 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"log"
 	"os"
 	"slices"
 	"strconv"
 	"time"
+
+	"github.com/vyevs/vtools"
 )
 
 func main() {
-	defer func(start time.Time) {
-		fmt.Printf("that took %v\n", time.Since(start))
-	}(time.Now())
+	defer vtools.TimeIt(time.Now(), "everything")
 
 	weights := readWeights()
 
 	const nBuckets = 4
 
-	slices.SortFunc(weights, func(a, b int) int {
-		if a < b {
-			return 1
-		}
-		return -1
-	})
+	// The input comes sorted. Reverse it so it's in descending order. We want to consider heavy weights first.
+	slices.Reverse(weights)
 
 	fmt.Printf("weights = %v\n", weights)
 
@@ -36,8 +30,36 @@ func main() {
 	fmt.Printf("the quantum entanglement of the 1st group is %d\n", product(solution[0]))
 }
 
+func smallestSubsetThatSumsTo(items []int, target int) []int {
+	subset := make([]int, 0, len(items))
+	var sum int
+	bestLen := len(items)
+
+	var rec func(itemsLeft []int)
+	rec = func(itemsLeft []int) {
+		if len(itemsLeft) == 0 {
+			return
+		}
+
+		for i, v := range items {
+			subset = append(subset, v)
+			sum += v
+			if sum == target {
+				return
+			}
+
+			rec(itemsLeft[i:])
+
+			sum -= v
+		}
+
+	}
+
+	best := rec(items)
+}
+
 func newSolver(weights []int, nBuckets int) *solver {
-	weightSum := sum(weights)
+	weightSum := vtools.SumSlice(weights)
 
 	if weightSum%nBuckets != 0 {
 		log.Fatalf("the sum of the weights is not divisible by the number of buckets %d, there is no solution", nBuckets)
@@ -139,31 +161,18 @@ func allEqual(vs []int) bool {
 }
 
 func readWeights() []int {
-	bs, err := os.ReadFile("input.txt")
+	lines, err := vtools.ReadLines(os.Args[1])
 	if err != nil {
-		log.Fatalf("failed to read file: %v", err)
+		log.Fatalf("ReadLines: %v", err)
 	}
 
-	sc := bufio.NewScanner(bytes.NewReader(bs))
-
-	weights := make([]int, 0, 64)
-	for sc.Scan() {
-		line := sc.Text()
-
-		weight, _ := strconv.Atoi(line)
-
-		weights = append(weights, weight)
-	}
-
-	return weights
-}
-
-func sum(s []int) int {
-	sm := 0
-	for _, v := range s {
-		sm += v
-	}
-	return sm
+	return vtools.Map(lines, func(s string) int {
+		v, err := strconv.Atoi(s)
+		if err != nil {
+			panic(fmt.Sprintf("atoi: %v", err))
+		}
+		return v
+	})
 }
 
 func product(s []int) int {
