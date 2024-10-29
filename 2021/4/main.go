@@ -163,7 +163,7 @@ func getInput() ([]int, []board) {
 			line := lines[lineNum]
 			lineNum++
 
-			nums := vtools.SplitWS(line)
+			nums := strings.Fields(line)
 
 			for j := range 5 {
 				v, _ := strconv.Atoi(nums[j])

@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-
 func main() {
 	measurements := getMeasurements()
 	{
@@ -44,19 +43,17 @@ func nIncreasesSlidingWindow(ns []int) int {
 	return nIncreases
 }
 
-
 func getMeasurements() []int {
 	scanner := bufio.NewScanner(os.Stdin)
-	
-	
+
 	nums := make([]int, 0, 1024)
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		num, _ := strconv.Atoi(line)
-		
+
 		nums = append(nums, num)
 	}
-	
+
 	return nums
 }

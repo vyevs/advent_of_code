@@ -40,7 +40,6 @@ func findImbalance(root *program) int {
 		return p.sum
 	})
 
-	
 }
 
 func getRootProgram(programs []program) *program {
@@ -87,7 +86,7 @@ func parseProgramStr(pStr string) program {
 	return p
 }
 
-func connectPrograms(programs []program) {
+func buildTree(programs []program) {
 	nameToP := make(map[string]*program, len(programs))
 
 	for i, p := range programs {

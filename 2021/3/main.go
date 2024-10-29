@@ -1,19 +1,23 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
+
+	"github.com/vyevs/vtools"
 )
 
 func main() {
-	in := getInput()
+	lines, err := vtools.ReadLines(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
 	{
-		pc := determinePowerConsumption(in)
+		pc := determinePowerConsumption(lines)
 		fmt.Printf("1: Power consumption is %d\n", pc)
 	}
 	{
-		lsr := determineLifeSupportRating(in)
+		lsr := determineLifeSupportRating(lines)
 		fmt.Printf("2: Life support rating is %d\n", lsr)
 	}
 }
@@ -67,10 +71,8 @@ func count0sByColumn(in []string) []int {
 }
 
 func determineOxygenGeneratorRating(in []string) int {
-	set := make(map[string]struct{}, len(in))
-	for _, v := range in {
-		set[v] = struct{}{}
-	}
+	set := vtools.NewSet[string](len(in))
+	set.Add(in...)
 
 	var bitPos int
 	for len(set) > 1 {
@@ -78,7 +80,7 @@ func determineOxygenGeneratorRating(in []string) int {
 
 		for v := range set {
 			if v[bitPos] != bit {
-				delete(set, v)
+				set.Delete(v)
 			}
 		}
 
@@ -103,10 +105,8 @@ func binStrToInt(s string) int {
 }
 
 func determineCO2ScrubberRating(in []string) int {
-	set := make(map[string]struct{}, len(in))
-	for _, v := range in {
-		set[v] = struct{}{}
-	}
+	set := vtools.NewSet[string](len(in))
+	set.Add(in...)
 
 	var bitPos int
 	for len(set) > 1 {
@@ -114,7 +114,7 @@ func determineCO2ScrubberRating(in []string) int {
 
 		for v := range set {
 			if v[bitPos] != bit {
-				delete(set, v)
+				set.Delete(v)
 			}
 		}
 
@@ -128,7 +128,7 @@ func determineCO2ScrubberRating(in []string) int {
 	return binStrToInt(lastVal)
 }
 
-func mostCommonBitAtPosition(set map[string]struct{}, pos int) byte {
+func mostCommonBitAtPosition(set vtools.Set[string], pos int) byte {
 	var count0s int
 	for v := range set {
 		if v[pos] == '0' {
@@ -141,7 +141,7 @@ func mostCommonBitAtPosition(set map[string]struct{}, pos int) byte {
 	return '1'
 }
 
-func leastCommonBitAtPosition(set map[string]struct{}, pos int) byte {
+func leastCommonBitAtPosition(set vtools.Set[string], pos int) byte {
 	var count0s int
 	for v := range set {
 		if v[pos] == '0' {
@@ -152,16 +152,4 @@ func leastCommonBitAtPosition(set map[string]struct{}, pos int) byte {
 		return '0'
 	}
 	return '1'
-}
-
-func getInput() []string {
-	scanner := bufio.NewScanner(os.Stdin)
-
-	in := make([]string, 0, 1024)
-	for scanner.Scan() {
-		line := scanner.Text()
-		in = append(in, line)
-	}
-
-	return in
 }
